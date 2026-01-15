@@ -14,19 +14,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Tell CMake to use Qt's compilation features
 qt_standard_project_setup()
 
-# Add the executable
-add_executable(${PROJECT_NAME}
-    main.cpp
-    LidarSimulator.cpp
-    LidarVisualizer.cpp
-    LiveErrorPlot.cpp
-    Config.h
-    localizor2.cpp
-    LidarSimulator.h
-    LidarVisualizer.h
-    LiveErrorPlot.h
-    localizor.h
-)
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE HEADERS "include/*.hpp")
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Link the executable to the Qt modules
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)

@@ -1,0 +1,64 @@
+# --- Build Directories ---
+build/
+bin/
+out/
+.cache/
+
+# --- CMake Artifacts ---
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.ninja
+*.ninja_deps
+*.ninja_log
+
+# --- Qt Generated Files ---
+# (MOC, UI, and RCC files are handled in the build folder, 
+# but this is a safety net if they end up in src)
+*_autogen/
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qmlc
+*.jsc
+
+# --- Compiled Binaries & Libraries ---
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+*.obj
+*.o
+*.pdb
+
+# --- IDE Specific Files ---
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sln
+*.vcxproj
+*.filters
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+
+# --- System & Misc ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.bak
