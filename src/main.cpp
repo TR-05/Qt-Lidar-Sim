@@ -16,11 +16,11 @@ namespace Simulation {
     constexpr float LoopIntervalMs = 16.0f;
     
     const std::vector<Obstacle> WorldObstacles = {
-        {Config::RoomSize / 2, Config::RoomSize / 2, 4, false},
-        {24, 48, 2, false},
-        {24, Config::RoomSize - 48, 2, false},
-        {Config::RoomSize - 24, 48, 2, false},
-        {Config::RoomSize - 24, Config::RoomSize - 48, 2, false}
+        {Config::RoomSize / 2, Config::RoomSize / 2, 3, false},
+        {24, 48, 1, false},
+        {24, Config::RoomSize - 48, 1, false},
+        {Config::RoomSize - 24, 48, 1, false},
+        {Config::RoomSize - 24, Config::RoomSize - 48, 1, false}
     };
 }
 
