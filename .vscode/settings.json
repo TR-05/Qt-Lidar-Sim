@@ -1,0 +1,6 @@
+{
+
+    "terminal.integrated.env.windows": {
+        "PATH": "${env:PATH};C:\\Qt\\6.10.1\\mingw_64\\bin"
+    }
+}
