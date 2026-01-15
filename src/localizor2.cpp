@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Config.hpp"
+#include "config.hpp"
 #include "localizor.hpp"
 
 bool confident;
@@ -113,8 +114,8 @@ WallResult validateSingleWall(const std::vector<Point2d>& points, bool isXAxis) 
 
 // --- Main Localization ---
 
-Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float heading) {
-    static float lastX = 72.0f, lastY = 72.0f;
+Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float real_x, float real_y, float heading) {
+    static float lastX = 0, lastY = 0;
     static bool initialized = false;
 
     // 1. Initial Translation to Cartesian using Fuzzy Heading (+20 bias)
@@ -147,12 +148,15 @@ Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float h
     }
 
     float correctedHeading = fuzzyHeading + best_offset;
+    correctedHeading = heading;
 
     // 3. Final Rotation for Coordinate Extraction
     for (size_t i = 0; i < data.first.size(); i++) {
         float a = (data.second[i] + correctedHeading) * Config::DegToRad;
         points[i] = {data.first[i] * cosf(a), data.first[i] * sinf(a)};
     }
+
+    // if heading is perfect what do we need for localizing?
 
     // 4. Wall Isolation
     std::vector<Point2d> L, R, B, T;
@@ -177,16 +181,28 @@ Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float h
     float curX = lastX, curY = lastY;
 
     // Determine X relative to Global Frame
-    if (resL.found)
+    if (resL.found && resR.found) {
+        curX = (fabs(resL.position) + (Config::RoomSize - resR.position)) / 2.0;
+        wallsString = "L+R";
+    } else if (resL.found) {
         curX = fabs(resL.position);
-    else if (resR.found)
+        wallsString = "L";
+    } else if (resR.found) {
         curX = Config::RoomSize - resR.position;
+        wallsString = "R";
+    }
 
-    // Determine Y relative to Global Frame
-    if (resB.found)
+    // Determine Y relative to Global
+    if (resB.found && resT.found) {
+        curY = (fabs(resB.position) + (Config::RoomSize - resT.position)) / 2.0;
+        wallsString += " B+T";
+    } else if (resB.found) {
         curY = fabs(resB.position);
-    else if (resT.found)
+        wallsString += " B";
+    } else if (resT.found) {
         curY = Config::RoomSize - resT.position;
+        wallsString += " T";
+    }
 
     // 5. Jump Guard: Detect and discard "Mirroring" or "Teleporting"
     if (initialized) {
@@ -194,17 +210,25 @@ Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float h
         float deltaY = fabs(curY - lastY);
         // If we move > 10 inches in 16ms, it's a sensor flip/bad heading match
         if (deltaX > 10.0f || deltaY > 10.0f) {
-            curX = lastX;
-            curY = lastY;
+            //curX = lastX;
+            //curY = lastY;
         }
+    } else {
+        static int i = 0;
+        // printf("First: %.2f, %.2f\n", real_x, real_y);
+        curX = real_x;
+        curY = real_y;
+        if (i >= 1) {
+            initialized = true;
+        }
+        i++;
     }
 
     lastX = curX;
     lastY = curY;
-    initialized = true;
 
     // Output formatted for the log monitoring
-    printf("X: %6.2f, Y: %6.2f, H: %7.2f\n", curX, curY, heading - correctedHeading);
+    printf("X: %6.2f, Y: %6.2f, H: %7.2f, RX: %6.2f, RY: %6.2f, RH: %7.2f\n", curX, curY, correctedHeading, real_x, real_y, heading);
 
     return {curX, curY, correctedHeading, max_score};
 }

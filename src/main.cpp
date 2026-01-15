@@ -13,7 +13,7 @@
 
 // --- Simulation Constants & Initial State ---
 namespace Simulation {
-    constexpr float LoopIntervalMs = 16.0f;
+    constexpr float LoopIntervalMs = 200.0f;
     
     const std::vector<Obstacle> WorldObstacles = {
         {Config::RoomSize / 2, Config::RoomSize / 2, 3, false},
@@ -55,15 +55,15 @@ int main(int argc, char* argv[]) {
         // Target Pose (Ground Truth)
         float rx = viz->poseX;
         float ry = viz->poseY;
-        float heading = currentTime * 180.0f; // 180 deg/s
-
+        float heading = currentTime * 90; // 90 deg/s
+        heading = 90;
         // A. Simulate Lidar Scan
         auto scanData = sim.getScan(rx, ry, heading, Simulation::WorldObstacles);
 
         // B. Run Localization
         // Note: noise calculation 'n' is here if you want to add it to your localization input
         float n = noiseDist(gen) * 30.0f; 
-        Result localizationResult = localize2(scanData, heading);
+        Result localizationResult = localize2(scanData, rx, ry, heading);
 
         // C. Process Data for Visualization
         std::vector<Point> scanPoints;
@@ -82,8 +82,24 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        std::vector<Point> scanPointsRotated;
+        scanPointsRotated.reserve(Config::ScanPoints);
+
+        for (int i = 0; i < Config::ScanPoints; ++i) {
+            float range = scanData.first.at(i);
+            float angle = scanData.second.at(i);
+            
+            if (range > 5) {
+                float rad = (angle + localizationResult.heading) * Config::DegToRad;
+                scanPointsRotated.push_back({
+                    range * std::cos(rad) + localizationResult.x,
+                    range * std::sin(rad) + localizationResult.y
+                });
+            }
+        }
+
         // D. Update Display
-        viz->updateFrame(scanPoints, Simulation::WorldObstacles, localizationResult, {rx, ry}, heading);
+        viz->updateFrame(scanPoints, scanPointsRotated, Simulation::WorldObstacles, localizationResult, {rx, ry}, heading);
     });
 
     // --- 4. Start ---

@@ -15,10 +15,9 @@ LidarVisualizer::LidarVisualizer(QWidget *parent) : QWidget(parent) {
   setMouseTracking(true);
 }
 
-void LidarVisualizer::updateFrame(const std::vector<Point> &scan,
-                                  const std::vector<Obstacle> &obs, Result est,
-                                  Point truth, float true_heading) {
+void LidarVisualizer::updateFrame(const std::vector<Point>& scan, const std::vector<Point>& rotScan, const std::vector<Obstacle>& obs, Result est, Point truth, float true_heading) {
   scanPoints = scan;
+  rotatedScan = rotScan;
   obstacles = obs;
   estPose = est;
   truePose = truth;
@@ -78,6 +77,12 @@ void LidarVisualizer::paintEvent(QPaintEvent *event) {
   for (const auto &pt : scanPoints) {
     p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
   }
+
+    p.setBrush(QColor(255, 128, 128, 150));
+  for (const auto &pt : rotatedScan) {
+    p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
+  }
+
 
   // 4. Histogram Logic
   const int chartHeight = 200;

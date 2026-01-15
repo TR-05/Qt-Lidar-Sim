@@ -5,11 +5,10 @@
 
 #include "config.hpp"
 
-Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float heading);
+Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float real_x, float real_y, float heading);
 
 extern bool confident;
 extern std::string wallsString;
 extern std::vector<int> xHist;
 extern std::vector<int> yHist;
 extern float binWidth;
-

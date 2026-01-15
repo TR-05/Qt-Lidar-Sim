@@ -7,7 +7,7 @@ class LidarVisualizer : public QWidget {
     Q_OBJECT
 public:
     explicit LidarVisualizer(QWidget* parent = nullptr);
-    void updateFrame(const std::vector<Point>& scan, const std::vector<Obstacle>& obs, Result est, Point truth, float true_heading);
+    void updateFrame(const std::vector<Point>& scan, const std::vector<Point>& rotScan, const std::vector<Obstacle>& obs, Result est, Point truth, float true_heading);
     float poseX;
     float poseY;
 
@@ -19,6 +19,7 @@ protected:
 private:
     void drawRobot(class QPainter& p, QPointF pos, float heading, bool isGhost, int size);
     std::vector<Point> scanPoints;
+    std::vector<Point> rotatedScan;
     std::vector<Obstacle> obstacles;
     Result estPose;
     Point truePose;
