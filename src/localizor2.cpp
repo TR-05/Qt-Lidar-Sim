@@ -4,7 +4,6 @@
 #include <array>
 #include <vector>
 
-#include "Config.hpp"
 #include "config.hpp"
 #include "localizor.hpp"
 
@@ -14,17 +13,14 @@ std::vector<int> xHist;
 std::vector<int> yHist;
 float binWidth;
 
-// --- Helper Structs ---
-struct Point2d {
-    float x;
-    float y;
-};
-
 struct WallResult {
     float position;
     bool found;
 };
-
+    struct Point2d {
+    float x;
+    float y;
+};
 // --- Constants ---
 const float BIN_SIZE = 0.5f;
 const float INV_BIN_SIZE = 2.0f;
@@ -228,7 +224,7 @@ Result localize2(std::pair<std::vector<float>, std::vector<float>> data, float r
     lastY = curY;
 
     // Output formatted for the log monitoring
-    printf("X: %6.2f, Y: %6.2f, H: %7.2f, RX: %6.2f, RY: %6.2f, RH: %7.2f\n", curX, curY, correctedHeading, real_x, real_y, heading);
+    //printf("X: %6.2f, Y: %6.2f, H: %7.2f, RX: %6.2f, RY: %6.2f, RH: %7.2f\n", curX, curY, correctedHeading, real_x, real_y, heading);
 
     return {curX, curY, correctedHeading, max_score};
 }
