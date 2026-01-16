@@ -1,12 +1,10 @@
 #include "LidarVisualizer.hpp"
-
+#include "config.hpp"
+#include "localizor.hpp"
 #include <qnamespace.h>
-
 #include <QMouseEvent>
 #include <QPainter>
 
-#include "config.hpp"
-#include "localizor.hpp"
 
 LidarVisualizer::LidarVisualizer(QWidget* parent) : QWidget(parent) {
     // Increased width to 1350 to fit both histograms side-by-side
@@ -35,22 +33,26 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     p.setRenderHint(QPainter::Antialiasing);
     p.fillRect(rect(), QColor(13, 17, 23));
 
-    // Map area scale
-    const float scale = (0.75 * this->height()) / Config::RoomSize;
+    // 1. Define Margins and Scaling
+    const float margin = 50.0f;  // Pixels of "out of bounds" space around the room
+    const float availableHeight = (0.75 * this->height()) - (2 * margin);
+    const float scale = availableHeight / Config::RoomSize;
 
-    auto toScreen = [&](float x, float y) { return QPointF(x * scale, (Config::RoomSize - y) * scale); };
+    // 2. Updated toScreen with Offset
+    // (x * scale + margin) shifts the room right
+    // (RoomSize - y) * scale + margin shifts the room down
+    auto toScreen = [&](float x, float y) { return QPointF(x * scale + margin, (Config::RoomSize - y) * scale + margin); };
 
     auto fromScreen = [&](QPointF screenPos) {
-        float x = screenPos.x() / scale;
-        float y = Config::RoomSize - (screenPos.y() / scale);
+        float x = (screenPos.x() - margin) / scale;
+        float y = Config::RoomSize - ((screenPos.y() - margin) / scale);
         return QPointF(x, y);
     };
 
     // 1. Draw Room (Fixed at top-left)
     p.setPen(QPen(QColor(60, 70, 90), 2));
-    p.drawRect(0, 0, Config::RoomSize * scale, Config::RoomSize * scale);
-    // --- 2. Draw Grid (24x24 cells) ---
-    p.setPen(QPen(QColor(60, 70, 90, 100), 1));  // Lower alpha (100) for a subtle look
+    p.drawRect(margin, margin, Config::RoomSize * scale, Config::RoomSize * scale);  // --- 2. Draw Grid (24x24 cells) ---
+    p.setPen(QPen(QColor(60, 70, 90, 100), 1));                                      // Lower alpha (100) for a subtle look
 
     int tiles = 6;
     float cellSize = (float)Config::RoomSize / tiles;  // This will be 6.0
@@ -59,10 +61,10 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
         float pos = i * cellSize * scale;
 
         // Draw Vertical Lines
-        p.drawLine(pos, 0, pos, Config::RoomSize * scale);
+        p.drawLine(pos + margin, 0 + margin, pos + margin, Config::RoomSize * scale + margin);
 
         // Draw Horizontal Lines
-        p.drawLine(0, pos, Config::RoomSize * scale, pos);
+        p.drawLine(0+ margin, pos+ margin, Config::RoomSize * scale + margin, pos + margin);
     }
 
     // 2. Draw Obstacles
@@ -76,7 +78,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
 
     p.setBrush(QColor(0, 255, 220, 150));
     for (const auto& pt : scanPoints) {
-         p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
+        //p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
     }
     /*
     for (const auto& pt : rotatedScan) {
@@ -97,7 +99,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
         QColor currentColor = palette[colorIdx % palette.size()];
         p.setPen(QPen(currentColor, 2));
 
-        p.drawLine(toScreen(wall.p1.x + truePose.x, wall.p1.y + truePose.y), toScreen(wall.p2.x + truePose.x, wall.p2.y + truePose.y));
+        // p.drawLine(toScreen(wall.p1.x + truePose.x, wall.p1.y + truePose.y), toScreen(wall.p2.x + truePose.x, wall.p2.y + truePose.y));
         colorIdx++;
     }
 
@@ -178,8 +180,8 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     // ---------------------------------------------------------
     int boxW = 220;
     int boxH = 200;
-    int margin = 20;
-    QRect statusRect(this->width() - boxW - margin, margin, boxW, boxH);
+    int margin2 = 20;
+    QRect statusRect(this->width() - boxW - margin2, margin2, boxW, boxH);
 
     // Draw Box Background
     p.setPen(QPen(QColor(60, 70, 90), 2));
@@ -188,7 +190,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
 
     // Draw Text
     p.setPen(Qt::white);
-    p.setFont(QFont("Consolas", 10));  // Monospace for better alignment
+    p.setFont(QFont("Monaco", 10));  // Monospace for better alignment
     int textMargin = 15;
     int lineSpacing = 20;
 
@@ -196,7 +198,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     p.setFont(QFont("Arial", 10, QFont::Bold));
     p.drawText(statusRect.adjusted(textMargin, 10, 0, 0), "Pose Comparison");
 
-    p.setFont(QFont("Consolas", 9));
+    p.setFont(QFont("Monaco", 9));
     // True Pose (Truth)
     p.setPen(QColor(150, 150, 150));
     p.drawText(statusRect.adjusted(textMargin, 35, 0, 0), QString("Truth: X:%1 Y:%2").arg(truePose.x, 0, 'f', 2).arg(truePose.y, 0, 'f', 2));
