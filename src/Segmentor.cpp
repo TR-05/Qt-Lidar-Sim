@@ -333,10 +333,10 @@ void localizeFromLines(Point2d& pose, float imuHeading) {
         if (weightL > 0 || weightH > 0) currentCoord = (currentCoord * 0.3) + (targetCoord * 0.7);
     };
 
-    solveAxis(bottom, top, pose.y, 144.0f);
-    solveAxis(left, right, pose.x, 144.0f);
+    solveAxis(bottom, top, pose.y, Config::RoomSize);
+    solveAxis(left, right, pose.x, Config::RoomSize);
 
-    pose.x = std::clamp(pose.x, 0.0f, 144.0f);
-    pose.y = std::clamp(pose.y, 0.0f, 144.0f);
+    pose.x = std::clamp(pose.x, 0.0f, Config::RoomSize);
+    pose.y = std::clamp(pose.y, 0.0f, Config::RoomSize);
 }
 }  // namespace LidarProcessor
