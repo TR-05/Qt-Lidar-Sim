@@ -47,7 +47,7 @@ LidarSimulator::getScan(float tx, float ty, float heading,
       }
     }
 
-    distances[i] = tMin + noise(gen) * .5;
+    distances[i] = tMin + noise(gen) * 1;
     headings[i] = angleRad * Config::RadToDeg - heading;
   }
   return {distances, headings};

@@ -1,5 +1,5 @@
 #pragma once
-#include "Config.hpp"
+#include "config.hpp"
 #include <vector>
 #include <random>
 

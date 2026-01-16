@@ -5,7 +5,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 
-#include "Config.hpp"
+#include "config.hpp"
 #include "localizor.hpp"
 
 LidarVisualizer::LidarVisualizer(QWidget* parent) : QWidget(parent) {
@@ -73,10 +73,10 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     }
 
     // 3. Draw Scan Points
-    
-        p.setBrush(QColor(0, 255, 220, 150));
+
+    p.setBrush(QColor(0, 255, 220, 150));
     for (const auto& pt : scanPoints) {
-        //p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
+         p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
     }
     /*
     for (const auto& pt : rotatedScan) {
@@ -93,21 +93,18 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     };
 
     size_t colorIdx = 0;
-
-    /*
-    for (const auto& l : currentLines) {
-        QColor currentColor = palette[colorIdx % palette.size()];
-        p.setBrush(currentColor);
-        for (const auto& pt : l) {
-            p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
-        }
-        colorIdx++;
-    }*/
-
-    //p.setPen(QPen(Qt::green, 2));
     for (const auto& wall : LidarProcessor::finalLines) {
         QColor currentColor = palette[colorIdx % palette.size()];
-            p.setPen(QPen(currentColor, 2));
+        p.setPen(QPen(currentColor, 2));
+
+        p.drawLine(toScreen(wall.p1.x + truePose.x, wall.p1.y + truePose.y), toScreen(wall.p2.x + truePose.x, wall.p2.y + truePose.y));
+        colorIdx++;
+    }
+
+    colorIdx = 0;
+    for (const auto& wall : LidarProcessor::correctedFinalLines) {
+        QColor currentColor = palette[colorIdx % palette.size()];
+        p.setPen(QPen(currentColor, 2));
 
         p.drawLine(toScreen(wall.p1.x + truePose.x, wall.p1.y + truePose.y), toScreen(wall.p2.x + truePose.x, wall.p2.y + truePose.y));
         colorIdx++;
@@ -258,8 +255,8 @@ void LidarVisualizer::drawRobot(QPainter& p, QPointF pos, float heading, bool is
 
 void LidarVisualizer::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
-        printf("Pressed\n");
-        printf("m_pos: %.2f,%.2f\n", m_objectPos.x(), m_objectPos.y());
+        // printf("Pressed\n");
+        // printf("m_pos: %.2f,%.2f\n", m_objectPos.x(), m_objectPos.y());
 
         // Simple hit test: check if click is near m_objectPos
         // (You may need to scale m_objectPos to screen coordinates first)

@@ -24,7 +24,8 @@ struct Line {
     Point2d p1, p2;
 };
 void segment(const std::pair<std::vector<float>, std::vector<float>>& rawData, Point2d pose, float h);
-void localizeFromLines(Point2d& pose);
+void localizeFromLines(Point2d& pose, float imuHeading);
 
 extern std::vector<Line> finalLines;
+extern std::vector<Line> correctedFinalLines;
 }  // namespace LidarProcessor

@@ -112,6 +112,8 @@ void splitAndMerge(std::span<const Point2d> points, float threshold, std::vector
 // --- Main Segmentation Function ---
 
 std::vector<Line> finalLines;
+std::vector<Line> correctedFinalLines;
+const float maxJumpSq = std::pow(4.0f, 2);
 
 void segment(const std::pair<std::vector<float>, std::vector<float>>& rawData, Point2d pose, float h) {
     if (rawData.first.empty()) return;
@@ -133,7 +135,6 @@ void segment(const std::pair<std::vector<float>, std::vector<float>>& rawData, P
 
     // 3. Euclidean Clustering
     std::vector<std::vector<Point2d>> clusters(1);
-    const float maxJumpSq = std::pow(3.0f, 2);
 
     for (size_t i = 0; i < cleanData.size(); ++i) {
         const float rad = (cleanData[i].angle + h) * Config::DegToRad;
@@ -214,12 +215,17 @@ void segment(const std::pair<std::vector<float>, std::vector<float>>& rawData, P
     // std::cout << "--- Frame Segments: " << finalLines.size() << " ---\n";
 }
 
-void localizeFromLines(Point2d& pose) {
+float normalizeAngle(float angle) {
+    while (angle > 180) angle -= 360;
+    while (angle < -180) angle += 360;
+    return angle;
+}
+void localizeFromLines(Point2d& pose, float imuHeading) {
     if (LidarProcessor::finalLines.empty()) return;
 
-    // 1. Storage for weighted distances
-    struct WallData { float dist; float length; };
-    std::vector<WallData> top, bottom, left, right;
+    // --- 1. Calculate Rotation Offset ---
+    float totalErrorWeighted = 0;
+    float totalLength = 0;
 
     for (const auto& l : LidarProcessor::finalLines) {
         float dx = l.p2.x - l.p1.x;
@@ -227,67 +233,109 @@ void localizeFromLines(Point2d& pose) {
         float len = std::hypot(dx, dy);
         if (len < 8.0f) continue;
 
-        float midX = (l.p1.x + l.p2.x) / 2.0f;
-        float midY = (l.p1.y + l.p2.y) / 2.0f;
         float ang = LidarProcessor::getLineAngle(l);
         float absA = std::abs(ang);
+        float error = 0;
+        bool isWall = false;
 
-        // Categorize into Global buckets
-        if (absA < 20.0f || absA > 160.0f) { // Horizontal
-            if (midY > 0) top.push_back({midY, len});
-            else bottom.push_back({midY, len});
-        } 
-        else if (absA > 70.0f && absA < 110.0f) { // Vertical
-            if (midX > 0) right.push_back({midX, len});
-            else left.push_back({midX, len});
+        if (absA < 20.0f || absA > 160.0f) {  // Horizontal
+            float target = (absA < 45.0f) ? 0.0f : (ang > 0 ? 180.0f : -180.0f);
+            error = normalizeAngle(ang - target);
+            isWall = true;
+        } else if (absA > 70.0f && absA < 110.0f) {  // Vertical
+            float target = (ang > 0) ? 90.0f : -90.0f;
+            error = normalizeAngle(ang - target);
+            isWall = true;
+        }
+
+        if (isWall) {
+            totalErrorWeighted += error * len;
+            totalLength += len;
         }
     }
 
-    // 2. Solve for X and Y independently
-    auto solveAxis = [&](std::vector<WallData>& lowWalls, std::vector<WallData>& highWalls, 
-                         float& currentCoord, float maxRoom) {
-        
+    float measuredRoomAngle = (totalLength > 0) ? (totalErrorWeighted / totalLength) : 0;
+
+    // --- 2. Rotate finalLines to align with Global Grid ---
+    // We rotate by NEGATIVE measuredRoomAngle to "un-tilt" the room
+    float rad = -measuredRoomAngle * (M_PI / 180.0f);
+    float cosA = std::cos(rad);
+    float sinA = std::sin(rad);
+
+    correctedFinalLines = finalLines;
+    for (auto& l : LidarProcessor::correctedFinalLines) {
+        // Rotate P1
+        float x1 = l.p1.x;
+        float y1 = l.p1.y;
+        l.p1.x = x1 * cosA - y1 * sinA;
+        l.p1.y = x1 * sinA + y1 * cosA;
+
+        // Rotate P2
+        float x2 = l.p2.x;
+        float y2 = l.p2.y;
+        l.p2.x = x2 * cosA - y2 * sinA;
+        l.p2.y = x2 * sinA + y2 * cosA;
+    }
+
+    // --- 3. Bucket the NOW-ROTATED lines ---
+    struct WallData {
+        float dist;
+        float length;
+    };
+    std::vector<WallData> top, bottom, left, right;
+    for (const auto& l : LidarProcessor::correctedFinalLines) {
+        float dx = l.p2.x - l.p1.x;
+        float dy = l.p2.y - l.p1.y;
+        float len = std::hypot(dx, dy);
+        if (len < 8.0f) continue;
+
+        float midX = (l.p1.x + l.p2.x) / 2.0f;
+        float midY = (l.p1.y + l.p2.y) / 2.0f;
+
+        // After rotation, we check orientation purely by the new delta values
+        if (std::abs(dy) < std::abs(dx)) {  // Horizontal-ish
+            if (midY > 0)
+                top.push_back({midY, len});
+            else
+                bottom.push_back({midY, len});
+        } else {  // Vertical-ish
+            if (midX > 0)
+                right.push_back({midX, len});
+            else
+                left.push_back({midX, len});
+        }
+    }
+
+    // --- 4. Solve Axis (same logic as before) ---
+    auto solveAxis = [&](std::vector<WallData>& lowWalls, std::vector<WallData>& highWalls, float& currentCoord, float maxRoom) {
         float weightedLow = 0, weightL = 0;
-        for (auto& w : lowWalls) { weightedLow += w.dist; weightL += w.length; }
-        if (weightL > 0) weightedLow /= lowWalls.size(); // Avg relative dist to '0' wall
+        for (auto& w : lowWalls) {
+            weightedLow += w.dist * w.length;
+            weightL += w.length;
+        }
+        if (weightL > 0) weightedLow /= weightL;
 
         float weightedHigh = 0, weightH = 0;
-        for (auto& w : highWalls) { weightedHigh += w.dist; weightH += w.length; }
-        if (weightH > 0) weightedHigh /= highWalls.size(); // Avg relative dist to 'max' wall
+        for (auto& w : highWalls) {
+            weightedHigh += w.dist * w.length;
+            weightH += w.length;
+        }
+        if (weightH > 0) weightedHigh /= weightH;
 
         float targetCoord = currentCoord;
-
-        // CASE 1: Parallel Walls (The 144" Constraint)
         if (weightL > 0 && weightH > 0) {
-            float measuredGap = std::abs(weightedHigh - weightedLow);
-            if (std::abs(measuredGap - maxRoom) < 15.0f) {
-                // Robot is |weightedLow| away from 0.
-                targetCoord = std::abs(weightedLow);
-            }
-        }
-        // CASE 2: Single Wall (High)
-        else if (weightH > 0) {
-            // wall_world = robot_world + wall_relative -> robot = 144 - relative
+            if (std::abs(std::abs(weightedHigh - weightedLow) - maxRoom) < 15.0f) targetCoord = std::abs(weightedLow);
+        } else if (weightH > 0)
             targetCoord = maxRoom - weightedHigh;
-        }
-        // CASE 3: Single Wall (Low)
-        else if (weightL > 0) {
-            // wall_world = robot_world + wall_relative -> robot = 0 - relative
+        else if (weightL > 0)
             targetCoord = 0.0f - weightedLow;
-        }
 
-        // Apply change with smoothing (Alpha filter)
-        if (weightL > 0 || weightH > 0) {
-            currentCoord = (currentCoord * 0.5) + (targetCoord * 0.5);
-        }
+        if (weightL > 0 || weightH > 0) currentCoord = (currentCoord * 0.3) + (targetCoord * 0.7);
     };
 
-    // Y-axis is defined by TOP/BOTTOM walls
     solveAxis(bottom, top, pose.y, 144.0f);
-    // X-axis is defined by LEFT/RIGHT walls
     solveAxis(left, right, pose.x, 144.0f);
 
-    // Keep robot in the box
     pose.x = std::clamp(pose.x, 0.0f, 144.0f);
     pose.y = std::clamp(pose.y, 0.0f, 144.0f);
 }

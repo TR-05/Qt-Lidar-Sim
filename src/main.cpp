@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
     mainWin.resize(1000, 800);
 
     QHBoxLayout* layout = new QHBoxLayout(&mainWin);
+    layout->setContentsMargins(80, 20, 20, 20);
     auto* viz = new LidarVisualizer();
     viz->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout->addWidget(viz);
@@ -54,19 +55,19 @@ int main(int argc, char* argv[]) {
         // Target Pose (Ground Truth)
         float rx = viz->poseX;
         float ry = viz->poseY;
-        float heading = currentTime * 90;  // 90 deg/s
+        float heading = currentTime * 180;  // 90 deg/s
         // heading = 90;
         //  A. Simulate Lidar Scan
         auto scanData = sim.getScan(rx, ry, heading, Simulation::WorldObstacles);
 
         // B. Run Localization
         // Note: noise calculation 'n' is here if you want to add it to your localization input
-        float n = noiseDist(gen) * .5 + 2;
+        float n = noiseDist(gen) * 5 + 12;
 
         LidarProcessor::segment(scanData, {rx, ry}, heading + n * 1);
         static LidarProcessor::Point2d estPose = {40, 72};
         float estH = heading;
-        LidarProcessor::localizeFromLines(estPose);
+        LidarProcessor::localizeFromLines(estPose, heading);
 
         // C. Process Data for Visualization
         std::vector<Point> scanPoints;

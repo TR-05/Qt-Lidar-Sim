@@ -24,6 +24,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/i
 # Link the executable to the Qt modules
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)
 
+if(APPLE)
+    # Force the linker to look in our local 'FakeFrameworks' directory
+    # This satisfies the '-framework AGL' requirement with our empty file
+    target_link_options(${PROJECT_NAME} PRIVATE "-F${CMAKE_CURRENT_SOURCE_DIR}/FakeFrameworks")
+endif()
+
 # Set up the source files to be processed by Qt's meta-object compiler (MOC)
 # NOTE: The Qt 6 CMake integration handles MOC processing automatically for
 # files listed above, making explicit calls like qt_add_executable_headers

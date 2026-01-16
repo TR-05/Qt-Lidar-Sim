@@ -1,6 +1,6 @@
 #pragma once
 #include <QWidget>
-#include "Config.hpp"
+#include "config.hpp"
 #include <vector>
 
 class LidarVisualizer : public QWidget {
