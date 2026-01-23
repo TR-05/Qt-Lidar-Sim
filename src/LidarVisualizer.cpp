@@ -1,10 +1,14 @@
 #include "LidarVisualizer.hpp"
-#include "config.hpp"
-#include "localizor.hpp"
+#include "MCL/Lidar.hpp"
 #include <qnamespace.h>
+
 #include <QMouseEvent>
 #include <QPainter>
+#include <cmath>
 
+#include "MCL/Types.hpp"
+#include "config.hpp"
+#include "localizor.hpp"
 
 LidarVisualizer::LidarVisualizer(QWidget* parent) : QWidget(parent) {
     // Increased width to 1350 to fit both histograms side-by-side
@@ -16,14 +20,12 @@ LidarVisualizer::LidarVisualizer(QWidget* parent) : QWidget(parent) {
     setMouseTracking(true);
 }
 
-void LidarVisualizer::updateFrame(const std::vector<Point>& scan, const std::vector<Point>& rotScan, const std::vector<Obstacle>& obs, Result est, Point truth,
-                                  float true_heading) {
+std::vector<Particle> current_particles;
+void LidarVisualizer::updateFrame(const std::vector<Point>& scan, std::vector<Particle> particles, const std::vector<Obstacle>& obs, Pose est, Pose truth) {
     scanPoints = scan;
-    rotatedScan = rotScan;
     obstacles = obs;
     estPose = est;
-    truePose = truth;
-    this->true_heading = true_heading;
+    current_particles = particles;
     update();
 }
 
@@ -64,7 +66,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
         p.drawLine(pos + margin, 0 + margin, pos + margin, Config::RoomSize * scale + margin);
 
         // Draw Horizontal Lines
-        p.drawLine(0+ margin, pos+ margin, Config::RoomSize * scale + margin, pos + margin);
+        p.drawLine(0 + margin, pos + margin, Config::RoomSize * scale + margin, pos + margin);
     }
 
     // 2. Draw Obstacles
@@ -75,16 +77,20 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     }
 
     // 3. Draw Scan Points
-
     p.setBrush(QColor(0, 255, 220, 150));
     for (const auto& pt : scanPoints) {
-        //p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
-    }
-    /*
-    for (const auto& pt : rotatedScan) {
         p.drawEllipse(toScreen(pt.x, pt.y), 1.5, 1.5);
     }
-    */
+
+    p.setBrush(QColor(0, 255, 10, 150));
+    for (const auto& pt : current_particles) {
+        if (pt.pose.x < 0 || pt.pose.x > 144) {
+    //qDebug() << "OUT OF BOUNDS PARTICLE:" << pt.pose.x << pt.pose.y;
+}
+        //printf("px: %.1f, py: %.1f\n", pt.pose.x,pt.pose.y);
+        p.drawEllipse(toScreen(pt.pose.x, pt.pose.y), 2, 2);
+    }
+
     const std::vector<QColor> palette = {
         QColor(255, 128, 128, 150),  // Coral
         QColor(128, 255, 128, 150),  // Mint
@@ -108,7 +114,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
         QColor currentColor = palette[colorIdx % palette.size()];
         p.setPen(QPen(currentColor, 2));
 
-        p.drawLine(toScreen(wall.p1.x + truePose.x, wall.p1.y + truePose.y), toScreen(wall.p2.x + truePose.x, wall.p2.y + truePose.y));
+        //p.drawLine(toScreen(wall.p1.x + truePose.x, wall.p1.y + truePose.y), toScreen(wall.p2.x + truePose.x, wall.p2.y + truePose.y));
         colorIdx++;
     }
 
@@ -172,8 +178,8 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     auto pose = fromScreen(m_objectPos);
     poseX = pose.x();
     poseY = pose.y();
-    drawRobot(p, {m_objectPos.x(), m_objectPos.y()}, true_heading, false, 20);
-    drawRobot(p, toScreen(estPose.x, estPose.y), estPose.heading, true, 30);
+    drawRobot(p, {m_objectPos.x(), m_objectPos.y()}, true_pose.theta, false, 20);
+    drawRobot(p, toScreen(estPose.x, estPose.y), estPose.theta, true, 30);
 
     // ---------------------------------------------------------
     // 6. TOP RIGHT STATUS BOX (Coordinates)
@@ -201,7 +207,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     p.setFont(QFont("Monaco", 9));
     // True Pose (Truth)
     p.setPen(QColor(150, 150, 150));
-    p.drawText(statusRect.adjusted(textMargin, 35, 0, 0), QString("Truth: X:%1 Y:%2").arg(truePose.x, 0, 'f', 2).arg(truePose.y, 0, 'f', 2));
+    p.drawText(statusRect.adjusted(textMargin, 35, 0, 0), QString("Truth: X:%1 Y:%2").arg(true_pose.x, 0, 'f', 2).arg(true_pose.y, 0, 'f', 2));
 
     // Localizer Pose (Estimated)
     p.setPen(QColor(0, 255, 220));
@@ -209,15 +215,15 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
 
     // Pose Error
     p.setPen(Qt::white);
-    float dx = truePose.x - estPose.x;
-    float dy = truePose.y - estPose.y;
+    float dx = true_pose.x - estPose.x;
+    float dy = true_pose.y - estPose.y;
     float error = sqrt(dx * dx + dy * dy);
     p.drawText(statusRect.adjusted(textMargin, 35 + (lineSpacing * 2), 0, 0), QString("Pose Error: %1").arg((float)error, 0, 'f', 2));
 
     // Heading Comparison
     p.setPen(Qt::white);
     p.drawText(statusRect.adjusted(textMargin, 35 + (lineSpacing * 3), 0, 0),
-               QString("Angle: Truth %1 | Est %2 | Diff %3").arg((int)true_heading).arg((int)estPose.heading).arg((float)(true_heading - estPose.heading), 0, 'f', 2));
+               QString("Angle: Truth %1 | Est %2 | Diff %3").arg((int)true_pose.theta).arg((int)estPose.theta).arg((float)(true_pose.theta - estPose.theta), 0, 'f', 2));
 
     // 6. STATUS INDICATOR
     QString statusText = wallsString.c_str();
@@ -246,7 +252,7 @@ void LidarVisualizer::drawRobot(QPainter& p, QPointF pos, float heading, bool is
         p.setBrush(QColor(255, 255, 255, 40));
         p.setPen(QPen(QColor(255, 255, 255, 80), 1, Qt::DashLine));
     } else {
-        p.setBrush(QColor(200, 200, 200));
+        p.setBrush(QColor(200, 200, 200, 30));
         p.setPen(QPen(QColor(50, 50, 50), 2));
     }
     p.drawRect(-s / 2, -s / 2, s, s);
