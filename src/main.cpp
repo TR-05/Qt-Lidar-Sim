@@ -19,6 +19,8 @@ constexpr float LoopIntervalMs = 16.0f;
 }  // namespace Simulation
 
 int main(int argc, char* argv[]) {
+    float angular = 5; //deg /s 
+   
     QApplication app(argc, argv);
     app.setStyle("Fusion");
 
@@ -45,7 +47,7 @@ int main(int argc, char* argv[]) {
         currentTime += Simulation::LoopIntervalMs / 1000.0f;
 
         // Target Pose (Ground Truth)
-        true_pose = {viz->poseX, viz->poseY, currentTime * 0};
+        true_pose = {viz->poseX, viz->poseY, currentTime * angular};
         double cur_theta = (90.0 - true_pose.theta) * Config::DegToRad;
         double last_theta = (90.0 - lastPose.theta) * Config::DegToRad;
 
