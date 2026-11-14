@@ -14,6 +14,12 @@ MCL::MCL(int particle_count, double mixture_phi)
     }
 }
 
+//TODO: Properly account for robots delta pos 
+//For each update comp for robot's delta pos. To increase response accuracy we need to have each lidar measurement have a corresponding OTOS stamp
+
+//Run every loop (5-20ms) To figure out based off whether it better to do less particles more often or more particles less often
+//OTOS is accurate for small distances at (5ms per cycle)
+//Lidar is running at (0.2 ms per shot)
 void MCL::step(const Pose& odom_delta, const std::vector<LidarData>& scan) {
     if (std::isnan(odom_delta.x) || std::isnan(odom_delta.y)) return;
 
@@ -23,8 +29,9 @@ void MCL::step(const Pose& odom_delta, const std::vector<LidarData>& scan) {
     for (auto& p : particles) {
         motion_model.update(p, odom_delta, gen);
 
+        //If out of bounds
         if (p.pose.x < 0.0 || p.pose.x > 144.0 || p.pose.y < 0.0 || p.pose.y > 144.0) {
-            p.weight = 1e-18;
+            p.weight = 1e-18; //Crash the sensor weight (In theory if zero something happens)
         } else {
             p.weight = sensor_model.calculateWeight(p.pose, scan);
         }
@@ -37,10 +44,10 @@ void MCL::step(const Pose& odom_delta, const std::vector<LidarData>& scan) {
     double effective_mixture = (avg_w < 1e-13) ? 0.20 : mixture_ratio;
 
     // 3. Normalization
-    if (total_w > 1e-18) {
-        for (auto& p : particles) p.weight /= total_w;
-    } else {
-        for (auto& p : particles) p.weight = 1.0 / num_particles;
+    if (total_w > 1e-18) { //If atleast one particle is good  
+        for (auto& p : particles) p.weight /= total_w; //Normalise data
+    } else {//If all data is shitty 
+        for (auto& p : particles) p.weight = 1.0 / num_particles; //Set the weight to one
     }
 
     // 4. Low-Variance Resampling
@@ -53,6 +60,7 @@ void MCL::step(const Pose& odom_delta, const std::vector<LidarData>& scan) {
     double c = particles[0].weight;
     int i = 0;
 
+    //TODO: Find out how this works
     for (int m = 0; m < num_particles; ++m) {
         double U = r + m * M_inv;
         while (U > c && i < num_particles - 1) {
