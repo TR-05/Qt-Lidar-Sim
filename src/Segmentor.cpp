@@ -7,6 +7,10 @@
 
 #include "config.hpp"
 
+//Fits lines to get a round ideas where the walls were 
+
+
+
 // Use a namespace to prevent global scope pollution
 namespace LidarProcessor {
 
@@ -39,7 +43,7 @@ void setLineAngle(Line& l, float targetAngleDeg) noexcept {
     if (magSq < 1e-6f) return std::hypot(p.x - a.x, p.y - a.y);
     return std::abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / std::sqrt(magSq);
 }
-
+ 
 bool getIntersection(const Line& l1, const Line& l2, Point2d& outIntersect) noexcept {
     const auto [x1, y1] = l1.p1;
     const auto [x2, y2] = l1.p2;
