@@ -31,3 +31,6 @@ A C++ and Qt-based simulator designed for testing LiDAR line-segmentation and ro
 ## 🔨 Building
 1. Configure the project for your specific kit.
 2. Build and Run.
+
+## Source Paper
+https://robots.stanford.edu/papers/thrun.hybrid-mcl.pdf 
