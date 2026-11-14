@@ -29,6 +29,7 @@ void LidarVisualizer::updateFrame(const std::vector<Point>& scan, std::vector<Pa
     update();
 }
 
+
 void LidarVisualizer::paintEvent(QPaintEvent* event) {
     QPainter p(this);
 
@@ -218,11 +219,29 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     float dx = true_pose.x - estPose.x;
     float dy = true_pose.y - estPose.y;
     float error = sqrt(dx * dx + dy * dy);
+    
+    static int index = 0;
+    rollingError.at(index) = error; 
+    
+    if(index >= rollingError.size()-1){
+        index = 0; 
+    } else{
+        index++;
+    }
+
+    float errorSum = 0;  
+    for(auto& error : rollingError) {
+        errorSum += error;
+    }
+    
+    float errorAvg = errorSum/(float)rollingError.size(); 
+    
     p.drawText(statusRect.adjusted(textMargin, 35 + (lineSpacing * 2), 0, 0), QString("Pose Error: %1").arg((float)error, 0, 'f', 2));
+    p.drawText(statusRect.adjusted(textMargin, 35 + (lineSpacing * 3), 0, 0), QString("Rolling Average Error: %1").arg((float)errorAvg, 0, 'f', 4));
 
     // Heading Comparison
     p.setPen(Qt::white);
-    p.drawText(statusRect.adjusted(textMargin, 35 + (lineSpacing * 3), 0, 0),
+    p.drawText(statusRect.adjusted(textMargin, 35 + (lineSpacing * 4), 0, 0),
                QString("Angle: Truth %1 | Est %2 | Diff %3").arg((int)true_pose.theta).arg((int)estPose.theta).arg((float)(true_pose.theta - estPose.theta), 0, 'f', 2));
 
     // 6. STATUS INDICATOR
@@ -233,7 +252,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
         statusColor = Qt::green;
     }
     p.setPen(statusColor);
-    p.drawText(statusRect.adjusted(textMargin, 60 + (lineSpacing * 4), 0, 0), statusText);
+    p.drawText(statusRect.adjusted(textMargin, 60 + (lineSpacing * 5), 0, 0), statusText);
 
     // Draw Origin Helper (0,0 marker)
     p.setPen(QPen(Qt::magenta, 2));

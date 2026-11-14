@@ -109,9 +109,10 @@ double MCL::SensorModel::calculateWeight(const Pose& p, const std::vector<LidarD
     const double z_hit = 0.95;
     const double z_rand = 0.05;
 
-    int skip = std::max(1, (int)scan.size() / 10);
+
+    int skip = std::max(1, (int)scan.size() / 20); //If its less than 10 items then use 1 otherwise make skip 1/10th of the array size
     
-    for (size_t i = 0; i < scan.size(); i += skip) {
+    for (size_t i = 0; i < scan.size(); i += skip) { //Uses at most 10 points (Either uses every point for an array < 10 or every arraysize/10 value)
         double expected = rayCast(p, scan[i].angle);
         double dist_diff = scan[i].length - expected;
         

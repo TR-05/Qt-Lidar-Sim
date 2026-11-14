@@ -20,7 +20,7 @@ constexpr float LoopIntervalMs = 16.0f;
 
 int main(int argc, char* argv[]) {
     float angular = 5; //deg /s 
-   
+
     QApplication app(argc, argv);
     app.setStyle("Fusion");
 

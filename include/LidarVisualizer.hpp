@@ -3,6 +3,7 @@
 #include "config.hpp"
 #include "MCL/Types.hpp"
 #include <vector>
+#include <array>
 
 class LidarVisualizer : public QWidget {
     Q_OBJECT
@@ -11,6 +12,7 @@ public:
     void updateFrame(const std::vector<Point>& scan, std::vector<Particle> particles, const std::vector<Obstacle>& obs, Pose est, Pose truth);
     float poseX;
     float poseY;
+    
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -25,4 +27,6 @@ private:
     bool m_isDragging = false;
     QPointF m_offset;      // Distance between mouse click and object center
     QPointF m_objectPos;   // The current (x, y) of your object/map
+    std::array<float, 200> rollingError; //Tracks last 200 errors  
+    float averageError; 
 };
