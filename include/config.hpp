@@ -25,6 +25,8 @@ struct Obstacle {
   float x, y, radius;
   bool moving;
 };
+
+//x, y, radius, is moving 
 const std::vector<Obstacle> WorldObstacles = {{Config::RoomSize / 2, Config::RoomSize / 2, 3, false},
                                               {24, 48, 1, false},
                                               {24, Config::RoomSize - 48, 1, false},

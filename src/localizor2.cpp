@@ -21,6 +21,7 @@ struct WallResult {
     float x;
     float y;
 };
+
 // --- Constants ---
 const float BIN_SIZE = 0.5f;
 const float INV_BIN_SIZE = 2.0f;

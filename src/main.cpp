@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <random>
 #include <vector>
+#include <algorithm>
 
 // Project Headers
 #include "LidarVisualizer.hpp"
@@ -19,13 +20,14 @@ constexpr float LoopIntervalMs = 16.0f;
 }  // namespace Simulation
 
 int main(int argc, char* argv[]) {
-    float angular = 5; //deg /s 
-
+    float angular = 0; //deg /s 
+    float horizontal = 0; // inch/s 
+    float vertical = 0;// inch/s
     QApplication app(argc, argv);
     app.setStyle("Fusion");
 
     // --- 1. UI Setup ---
-    QWidget mainWin;
+    QWidget mainWin;    
     mainWin.setWindowTitle("LiDAR Simulator & Localizer");
     mainWin.setStyleSheet("background-color: #0d1117; color: white;");
     mainWin.resize(1000, 800);
@@ -33,7 +35,7 @@ int main(int argc, char* argv[]) {
     QHBoxLayout* layout = new QHBoxLayout(&mainWin);
     layout->setContentsMargins(80, 20, 20, 20);
     auto* viz = new LidarVisualizer();
-    viz->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    viz->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed); //Set to fixed at avoid robot shifting on fullscreen 
     layout->addWidget(viz);
 
     // --- 2. Simulation State ---
@@ -41,15 +43,21 @@ int main(int argc, char* argv[]) {
     QTimer timer;
     MCL mcl_filter(25, 0.05);
     Pose lastPose;
-    viz->poseX = 72;
-    viz->poseY = 72;
+    viz->poseX = 82; //inchs
+    viz->poseY = 82;
     QObject::connect(&timer, &QTimer::timeout, [&]() {
         currentTime += Simulation::LoopIntervalMs / 1000.0f;
 
+        //Update X and Y
+        viz->poseX = std::clamp((viz->poseX+(cos(currentTime) * horizontal)), 0.0 ,144.0); 
+        viz->poseY = std::clamp((viz->poseY+(sin(currentTime) * vertical)), 0.0 ,144.0);
+
+        
         // Target Pose (Ground Truth)
         true_pose = {viz->poseX, viz->poseY, currentTime * angular};
-        double cur_theta = (90.0 - true_pose.theta) * Config::DegToRad;
+        double cur_theta = (90.0 - true_pose.theta) * Config::DegToRad; //Compass to standard degrees 
         double last_theta = (90.0 - lastPose.theta) * Config::DegToRad;
+        
 
         // 2. Calculate Delta in pure Cartesian
             std::normal_distribution<double> noise(0.0, 0.4);

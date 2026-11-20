@@ -179,7 +179,7 @@ void LidarVisualizer::paintEvent(QPaintEvent* event) {
     auto pose = fromScreen(m_objectPos);
     poseX = pose.x();
     poseY = pose.y();
-    drawRobot(p, {m_objectPos.x(), m_objectPos.y()}, true_pose.theta, false, 20);
+    drawRobot(p, toScreen(true_pose.x, true_pose.y), true_pose.theta, false, 20);
     drawRobot(p, toScreen(estPose.x, estPose.y), estPose.theta, true, 30);
 
     // ---------------------------------------------------------
